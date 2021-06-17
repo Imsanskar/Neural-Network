@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 
 //macro for round off
@@ -98,7 +99,31 @@ Matrix transpose(Matrix mat) {
 	return result;
 }
 
-Vector dot(Matrix mat, Vector vec) {
+
+/*
+	Calculates the product of two matrices
+*/
+Matrix matrixMultiply(Matrix mat1, Matrix mat2) {
+	Matrix result = initMatrix(mat1.row, mat2.column);
+	if (mat1.column != mat2.row) {
+		printf("Dimension error\n");
+		exit(-1);
+	}
+	for(int i = 0; i < mat1.row; i++) {
+		for (int j = 0; j < mat2.column; j++) {
+			for (int k = 0; k < mat1.column; k++) {
+				setMatrixElement(&result, i,j, getMatrixElement(result, i, j) + getMatrixElement(mat1, i, k) * getMatrixElement(mat2, k, j));
+			}
+		}
+	}
+	return result;
+}
+
+
+/*
+	Calculates the product of matrix and vector
+*/
+Vector multiplyMatrixVector(Matrix mat, Vector vec) {
 	Vector result = initVector(vec.size);
 	if (mat.column != vec.size) {
 		printf("Please check the dimension\n");
@@ -107,6 +132,89 @@ Vector dot(Matrix mat, Vector vec) {
 	for (int i = 0; i < mat.row; i++) {
 		for (int j = 0; j < mat.column; j++) {
 			result.array[i] += getMatrixElement(mat, i, j) * vec.array[j];
+		}
+	}
+	return result;
+}
+
+/*
+	Add vector and matrix using broadcasting
+*/
+Matrix addMatrixVector(Matrix mat, Vector vec){
+	Matrix result = initMatrix(mat.row, mat.column);
+	if (mat.row != vec.size) {
+		printf("Please check the dimension\n");
+		exit(-1);
+	}
+	for (int i = 0; i < mat.row; i++) {
+		for (int j = 0; j < mat.column; j++) {
+			float sum = getMatrixElement(mat, i, j) * vec.array[i];
+			setMatrixElement(&result, i, j, sum);
+		}
+	}
+	return result;
+}
+
+Matrix vectorToMatrix(Vector vec){
+	Matrix result = initMatrix(vec.size, 1);
+	for(int i = 0; i < vec.size; i++){
+		setMatrixElement(&result, i, 0, vec.array[i]);
+	}
+	return result;
+}
+
+
+/*-----------------------------math function----------------------------*/
+
+/*
+	Sigmoid functions
+*/
+float sigmoid(float x){
+	return (float)(1 / (exp(-x) + 1));
+}
+
+
+Vector sigmoidVector(Vector vec) {
+	Vector result = initVector(vec.size);
+	for(int i = 0; i < vec.size; i++){
+		result.array[i] = sigmoid(vec.array[i]);
+	}
+	return result;
+}
+
+
+
+Matrix sigmoidMatrix(Matrix mat) {
+	Matrix result = initMatrix(mat.row, mat.column);
+	for(int i = 0; i < mat.row; i++){
+		for(int j = 0; j < mat.column; j++){
+			setMatrixElement(&result, i, j, sigmoid(getMatrixElement(mat, i, j)));
+		}
+	}
+	return result;
+}
+
+
+// derivative of a sigmoid
+float derivativeSigmoid(float x) {
+	return sigmoid(x) * (1 - sigmoid(x));
+}
+
+
+Vector derivativeSigmoidVector(Vector vec) {
+	Vector result = initVector(vec.size);
+	for (int i = 0; i < vec.size; i++) {
+		result.array[i] = derivativeSigmoid(vec.array[i]);
+	}
+	return result;
+}
+
+
+Matrix derivativeSigmoidMatrix(Matrix mat) {
+	Matrix result = initMatrix(mat.row, mat.column);
+	for (int i = 0; i < mat.row; i++) {
+		for (int j = 0; j < mat.column; j++) {
+			setMatrixElement(&result, i, j, derivativeSigmoid(getMatrixElement(mat, i, j)));
 		}
 	}
 	return result;
