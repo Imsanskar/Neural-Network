@@ -1,5 +1,7 @@
 Debug/
-vs/
+.vs/
 x64/
 NeuralNet/Debug/
 NeuralNet/x64/
+NeuralNet/NeuralNet.vcxproj.user
+NeuralNet/NeuralNet.vcxproj.user
