@@ -16,7 +16,7 @@ int main() {
 	};
 	Matrix xMat = initMatrix(4, 2); 
 	setMatrixArray(&xMat, xTrain);
-	float y[4] = {0, 1, 1, 1};
+	float y[4] = {0, 1, 1, 0};
 	Vector yVec = initVector(4);
 	yVec.array = y;
 	/*
