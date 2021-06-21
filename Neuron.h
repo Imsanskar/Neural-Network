@@ -2,6 +2,8 @@
 #include "MathLib.h"
 
 
+//Todo: Refactor code
+
 //A single neuron
 typedef struct Neuron {
 	Vector weights;
@@ -123,14 +125,18 @@ Network initNetwork(const unsigned int size) {
 static void initializeParameters(Network* network) {
 	//initialize parameters from 1 to n layers
 	//size of 1st parameters depends upon the data
-	for (int i = 1; i < network->size; i++) {
-		network->parameters[i] = initMatrix(network->layers[i].size, network->layers[i - 1].size);
+	for (int i = 0; i < network->size; i++) {
+		if(i != 0)
+			network->parameters[i] = initMatrix(network->layers[i].size, network->layers[i - 1].size);
 		for (int j = 0; j < network->parameters[i].row; j++) {
 			for (int k = 0; k < network->parameters[i].column; k++) {
-				setMatrixElement(&network->parameters[i], j, k, (float)rand() / RAND_MAX);
+				setMatrixElement(&network->parameters[i], j, k, 0.5f);
 			}
 		}
 		network->bias[i] = initVector(network->layers[i].size);
+		for (int j = 0; j < network->bias[i].size; j++) {
+			network->bias[i].array[j] = (float)rand() / RAND_MAX;
+		}
 	}
 }
 
@@ -148,52 +154,105 @@ void setLayerSize(Network* network, int* size) {
 	network->parameters = (Matrix*)malloc(sizeof(Matrix) * network->size);
 	network->bias = (Vector *)malloc(sizeof(Vector) * network->size);
 	network->z = (Matrix *)malloc(sizeof(Matrix) * network->size);
-	network->a = (Matrix *)malloc(sizeof(Matrix) * network->size);
-	initializeParameters(network);
+	network->a = (Matrix *)malloc(sizeof(Matrix) * (network->size));
 }
 
 
-/*
-*	Forward propagate through a network to calculate parameters
-*/
-//void forwardPropagate(Network *network, Matrix *xTrain){
-//	for (int j = 0; j < x.row; j++) {
-//		network->z[0] = addMatrixVector(matrixMultiply(network->parameters[0], xTrain[j]), network->bias[0]);
-//		network->a[0] = sigmoidMatrix(network->z[0]);
-//		for (int k = 1; k < network->size; k++) {
-//			network->z[k] = addMatrixVector(matrixMultiply(network->parameters[k], network->a[k - 1]), network->bias[k]);
-//			network->a[k] = sigmoidMatrix(network->z[k]);
-//		}
-//	}
-//}
+void trainNetwork(Network* network, Matrix x, Vector y, int iterations, float alpha) {
 
+	/*
+		Initialize tha delta parameters for the back propagation, delta = dJ / dW
+	*/
+	Matrix* delta = (Matrix*)malloc((network->size) * sizeof(Matrix));
+			
 
-//Todo:back propagation
-void trainNetwork(Network* network, Matrix x, Vector y) {
-	network->parameters[0] = initMatrix(network->layers[0].size, 1);
-	network->bias[0] = initVector(network->layers[0].size);
+	//divide the traing data into matrix of matrix(n * 1)
 	Matrix* xTrain = (Matrix *)malloc(sizeof(Matrix) * x.row);
 	for (int i = 0; i < x.row; i++) {
+		//set the size of the matrix
 		xTrain[i] = initMatrix(x.column, 1);
+
+
+		//set  the element for each element
 		for (int j = 0; j < x.column; j++) {
 			setMatrixElement(&xTrain[i], j, 0, getMatrixElement(x, i, j));
 		}
+		print(xTrain[i]);
 	}
-	for(int i = 0; i < 1000; i++){
+
+	//initilize the size of the parameters
+	network->parameters[0] = initMatrix(network->layers[0].size, x.column);
+	network->bias[0] = initVector(network->layers[0].size);
+	initializeParameters(network);
+	for(int i = 0; i < iterations; i++){
 		//forward propagate through a network
-		for (int j = 0; j < x.row; j++) {
+		for (int j = 0; j < y.size; j++) {
 			float finalResult = 0.0f;
+
+
+			/*
+				use the parameters to calculate output of each layers and apply sigmoid function as activation function
+			*/
+
+			//for initial parameters using training data
 			network->z[0] = addMatrixVector(matrixMultiply(network->parameters[0], xTrain[j]), network->bias[0]);
 			network->a[0] = sigmoidMatrix(network->z[0]);
+
+
+			//traverse through all the layers of the network
 			for (int k = 1; k < network->size; k++) {
+				//calculate the Z's of each layer Z[k] = W[k] * A[k - 1] + b[2]
+				/*
+					Z: linear part of the activation function
+					a: non-linear part of the activation function(a = sigmoid(Z))
+				*/
 				network->z[k] = addMatrixVector(matrixMultiply(network->parameters[k], network->a[k - 1]), network->bias[k]);
 				network->a[k] = sigmoidMatrix(network->z[k]);
-				finalResult = getMatrixElement(network->a[k], 0, 0);
 			}
 
-			//backwardpropagation
-			float error = finalResult;
+			finalResult = getMatrixElement(network->a[network->size - 1], 0, 0);
+
+			//back propagate through the network to update the parameters
+
+
+
+			//deviation from the true value
+			float error = finalResult - y.array[j];
 			
+			for (int k = network->size - 1; k >= 0; k--) {
+				if(k == network->size - 1){
+					delta[k] = initMatrix(1, 1);
+					setMatrixElement(&delta[k], 0, 0, error);
+				}
+				else{
+					delta[k] = elementWiseProduct(matrixMultiply(transpose(network->parameters[k + 1]), delta[k + 1]), derivativeSigmoidMatrix(network->z[k]));
+				}
+			}
+
+
+			for (int k = network->size - 1; k >= 0; k--) {
+				if (k == 0) {
+					network->parameters[k] = matrixSubtract(network->parameters[k], scalematrix(matrixMultiply(delta[k], transpose(xTrain[j])), alpha));
+					network->bias[k] = vectorSubtract(network->bias[k], matrixToVector(scalematrix(delta[k], alpha)));
+				}
+				else {
+					network->parameters[k] = matrixSubtract(network->parameters[k], scalematrix(matrixMultiply(delta[k], transpose(network->a[k - 1])), alpha));
+					network->bias[k] = vectorSubtract(network->bias[k], matrixToVector(scalematrix(delta[k], alpha)));
+				}
+			}
 		}
+		printf("Error: %f\n", getMatrixElement(delta[network->size - 1], 0, 0));
 	}
+}
+
+float predictNetwork(Network *network, Matrix x) {
+	float finalResult = 0.0f;
+	Matrix z = addMatrixVector(matrixMultiply(network->parameters[0], x), network->bias[0]);
+	Matrix a = sigmoidMatrix(z);
+	for (int k = 1; k < network->size; k++) {
+		z = addMatrixVector(matrixMultiply(network->parameters[k], a), network->bias[k]);
+		a = sigmoidMatrix(z);
+ 	}
+	finalResult = getMatrixElement(a, 0, 0);
+	return finalResult;
 }

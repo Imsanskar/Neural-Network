@@ -18,6 +18,9 @@ typedef struct Vector {
 	int size;
 }Vector;
 
+/*
+	Inititialize a vector of size
+*/
 Vector initVector(int size) {
 	Vector vec;
 	vec.size = size;
@@ -28,6 +31,9 @@ Vector initVector(int size) {
 	return vec;
 }
 
+/* 
+	returns a dot vector of two vectors vec1 and vec2
+*/
 float dotVector(Vector vec1, Vector vec2) {
 	float result = 0.0f;
 	if (vec1.size != vec2.size) {
@@ -40,12 +46,27 @@ float dotVector(Vector vec1, Vector vec2) {
 	return result;
 }
 
+Vector vectorSubtract(Vector vec1, Vector vec2) {
+	Vector result = initVector(vec1.size);
+	if (vec1.size != vec2.size) {
+		printf("Vectors must be of same size\n");
+		exit(-1);
+	}
+	for (int i = 0; i < vec1.size; i++) {
+		result.array[i] = vec1.array[i] - vec2.array[i];
+	}
+	return result;
+}
+
+
+
+/*------------------------------------Matrix---------------------------*/
 typedef struct Matrix {
 	Vector* array;
 	int row, column;
 }Matrix;
 
-
+void print(Matrix mat);
 
 /*
 * Matrix
@@ -77,6 +98,28 @@ inline void setMatrixElement(Matrix* mat, int i, int j, float element) {
 	mat->array[i].array[j] = element;
 }
 
+
+
+/*convets a vector to a matrix of size(n, 1)*/
+Matrix vectorToMatrix(Vector vec) {
+	Matrix result = initMatrix(vec.size, 1);
+	for (int i = 0; i < vec.size; i++) {
+		setMatrixElement(&result, i, 0, vec.array[i]);
+	}
+	return result;
+}
+
+
+Vector matrixToVector(Matrix mat) {
+	Vector result = initVector(mat.row);
+	for (int i = 0; i < mat.row; i++) {
+		result.array[i] = getMatrixElement(mat, i, 0);
+	}
+	return result;
+}
+
+
+
 void setMatrixArray(Matrix* mat, float* array) {
 	for (int i = 0; i < mat->row; i++) {
 		for (int j = 0; j < mat->column; j++) {
@@ -91,14 +134,30 @@ void setMatrixArray(Matrix* mat, float* array) {
 Matrix transpose(Matrix mat) {
 	Matrix result = initMatrix(mat.column, mat.row);
 	for (int i = 0; i < result.row; i++) {
+		Vector* vec = mat.array + i;
 		for (int j = 0; j < result.column; j++) {
-			Vector* vec = &mat.array[i];
-			vec->array[j] = getMatrixElement(mat, j, i);
+			//vec->array[j] = getMatrixElement(mat, j, i);
+			setMatrixElement(&result, i, j, getMatrixElement(mat, j, i));
 		}
 	}
 	return result;
 }
 
+
+
+Matrix matrixSubtract(Matrix mat1, Matrix mat2) {
+	Matrix result = initMatrix(mat1.row, mat1.column);
+	if (mat1.row != mat2.row && mat1.column != mat2.column) {
+		printf("Dimension error\n");
+		exit(-1);
+	}
+	for (int i = 0; i < mat1.row; i++) {
+		for (int j = 0; j < mat1.column; j++) {
+			setMatrixElement(&result, i, j, getMatrixElement(mat1, i, j) - getMatrixElement(mat2, i, j));
+		}
+	}
+	return result;
+}
 
 /*
 	Calculates the product of two matrices
@@ -148,17 +207,33 @@ Matrix addMatrixVector(Matrix mat, Vector vec){
 	}
 	for (int i = 0; i < mat.row; i++) {
 		for (int j = 0; j < mat.column; j++) {
-			float sum = getMatrixElement(mat, i, j) * vec.array[i];
+			float sum = getMatrixElement(mat, i, j) + vec.array[i];
 			setMatrixElement(&result, i, j, sum);
 		}
 	}
 	return result;
 }
 
-Matrix vectorToMatrix(Vector vec){
-	Matrix result = initMatrix(vec.size, 1);
-	for(int i = 0; i < vec.size; i++){
-		setMatrixElement(&result, i, 0, vec.array[i]);
+Matrix elementWiseProduct(Matrix mat1, Matrix mat2) {
+	Matrix result = initMatrix(mat1.row, mat1.column);
+	if (mat1.row != mat2.row || mat1.column != mat2.column) {
+		printf("Dimension error\n");
+		exit(-1);
+	}
+	for (int i = 0; i < mat1.row; i++) {
+		for (int j = 0; j < mat1.column; j++) {
+			setMatrixElement(&result, i, j, getMatrixElement(mat1, i, j) * getMatrixElement(mat2, i, j));
+		}
+	}
+	return result;
+}
+
+Matrix scalematrix(Matrix mat1, float scale) {
+	Matrix result = initMatrix(mat1.row, mat1.column);
+	for (int i = 0; i < mat1.row; i++) {
+		for (int j = 0; j < mat1.column; j++) {
+			setMatrixElement(&result, i, j, getMatrixElement(mat1, i, j) * scale);
+		}
 	}
 	return result;
 }
@@ -218,4 +293,16 @@ Matrix derivativeSigmoidMatrix(Matrix mat) {
 		}
 	}
 	return result;
+}
+
+void print(Matrix mat) {
+	for (int i = 0; i < mat.row; i++) {
+		for (int j = 0; j < mat.column; j++) {
+			printf("%f   ", getMatrixElement(mat, i, j));
+		}
+		printf("\n");
+	}
+	printf("\n");
+	printf("\n");
+	printf("\n");
 }
