@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <utility>
 
 
 //macro for round off
@@ -16,48 +17,46 @@
 * Vector for neural networks
 */
 struct Vector {
-	float* array = {};
+	float* list = NULL;
 	int size;
 
 	Vector() {
 		size = 0;	
+		list = NULL;
 	}
 
 	Vector(int _size) {
 		size = _size;
-		array = (float *)malloc(sizeof(float) * size);
-		if(array == NULL) {
-			exit(-1);
-		}
+		list = new float[size];
 		for (int i = 0; i < size; i++) {
-			array[i] = 0.0f;
+			list[i] = 0.0f;
 		}
 	}
 
 	// copy constructors
 	Vector(const Vector& v) {
 		size = v.size;
-		array = (float *)malloc(sizeof(float) * size);
+		list = new float[size];
 		for (int i = 0; i < size; i++) {
-			array[i] = v.array[i];
+			list[i] = v.list[i];
 		}
 	}
 
 	// move constructors, no except just to please visual studio
 	Vector(Vector&& v) noexcept {
 		size = v.size;
-		array = v.array;
-		v.array = NULL;
+		list = v.list;
+		v.list = NULL;
 	}
 
 	Vector& operator =(const Vector& v) {
 		if(this != &v) {
-			free(array);
+			delete list;
 			size = v.size;
-			array = (float *)malloc(sizeof(float) * size);
+			list = new float[size];
 
 			for(int i = 0; i < size; i++) {
-				array[i] = v[i];
+				list[i] = v[i];
 			}
 		}
 		return *this;
@@ -65,43 +64,23 @@ struct Vector {
 
 	Vector& operator =(Vector&& v) {
 		if (this != &v) {
-			free(array);
+			delete list;
 			size = v.size;
-			array = v.array;
-			v.array = NULL;
+			list = v.list;
+			v.list = NULL;
 		}
 		return *this;
 	} 
 
 	float& operator [](int index) const{
-		return array[index];
+		return list[index];
 	}
 
 	~Vector (){
-		free(array);
+		// delete[] list;
 	} 
 };
 
-/*
-	Inititialize a vector of size
-*/
-// Vector Vector(int size) {
-// 	Vector vec;
-// 	vec.size = size;
-// 	vec.array = (float *)malloc(sizeof(float) * size);
-// 	if(vec.array == NULL) {
-// 		exit(-1);
-// 	}
-// 	for (int i = 0; i < size; i++) {
-// 		vec.array[i] = 0.0f;
-// 	}
-// 	return vec;
-// }
-
-void freeVector(Vector *vec) {
-	free(vec->array);
-	free(vec);
-}
 
 /* 
 	returns a dot vector of two vectors vec1 and vec2
@@ -113,7 +92,7 @@ float dotVector(Vector vec1, Vector vec2) {
 		exit(-1);
 	}
 	for (int i = 0; i < vec1.size; i++) {
-		result += vec1.array[i] * vec2.array[i];
+		result += vec1.list[i] * vec2.list[i];
 	}
 	return result;
 }
@@ -125,7 +104,7 @@ Vector vectorSubtract(Vector vec1, Vector vec2) {
 		exit(-1);
 	}
 	for (int i = 0; i < vec1.size; i++) {
-		result.array[i] = vec1.array[i] - vec2.array[i];
+		result.list[i] = vec1.list[i] - vec2.list[i];
 	}
 	return result;
 }
@@ -134,37 +113,33 @@ Vector vectorSubtract(Vector vec1, Vector vec2) {
 
 /*------------------------------------Matrix---------------------------*/
 struct Matrix {
-	Vector* array = {};
+	Vector* array = nullptr;
 	int row, column;
 
-	Matrix() {
-
-	}
-
-	Matrix(int _row, int col) {
+	Matrix(int _row, int _column) {
 		row = _row;
-		column = col;
-		array = (Vector *)malloc(sizeof(Vector) * row);
+		column = _column;
+		array = new Vector[row];
 		for (int i = 0; i < row; i++) {
-			array[i] = Vector(column);
+			array[i].size = column;
+			array[i].list = new float[column];
 		}
 	}
 
 	// copy assignemnt
 	Matrix& operator = (const Matrix &mat) noexcept{
 		if(this != &mat) {
-			free(array);
 			row = mat.row;
 			column = mat.column;
-			free(array);
-			array = (Vector *)malloc(sizeof(Vector) * row);
+			array = new Vector[row];
 			for (int i = 0; i < row; i++) {
-				array[i] = Vector(column);
+				array[i].size = column;
+				array[i].list = new float[column];
 			}
 
 			for(int i = 0; i < row; i++) {
 				for(int j = 0; j < column; j++) {
-					array[i].array[j] = mat.array[i].array[j];
+					array[i].list[j] = mat.array[i].list[j];
 				}
 			}
 		}
@@ -175,10 +150,14 @@ struct Matrix {
 	// move assignment 
 	Matrix& operator = (Matrix &&mat) noexcept{
 		if(this != &mat) {
-			free(this->array);
+			delete array;
 			row = mat.row;
 			column = mat.column;
 			array = mat.array;
+			for(int i = 0; i < row; i++) {
+				array[i].list = mat.array[i].list;
+				array[i].size = column;
+			}
 			mat.array = NULL;
 			mat.row = 0;
 			mat.column = 0;
@@ -189,16 +168,19 @@ struct Matrix {
 
 	// copy constructors
 	Matrix(const Matrix& mat) {
-		row = mat.row;
-		column = mat.column;
-		array = (Vector *)malloc(sizeof(Vector) * row);
-		for (int i = 0; i < row; i++) {
-			array[i] = Vector(column);
-		}
+		if (this != &mat) {
+			row = mat.row;
+			column = mat.column;
+			array = new Vector[row];
+			for (int i = 0; i < row; i++) {
+				array[i].size = column;
+				array[i].list = new float[column];
+			}
 
-		for(int i = 0; i < row; i++) {
-			for(int j = 0; j < column; j++) {
-				array[i].array[j] = mat[i][j];
+			for(int i = 0; i < row; i++) {
+				for(int j = 0; j < column; j++) {
+					array[i].list[j] = mat[i][j];
+				}
 			}
 		}
 	}
@@ -208,6 +190,11 @@ struct Matrix {
 		row = mat.row;
 		column = mat.column;
 		array = mat.array;
+		for(int i = 0; i < row; i++) {
+			array[i].list = mat.array[i].list;
+			array[i].size = column;
+			mat.array[i].list = NULL;
+		}
 		mat.array = nullptr;
 	}
 
@@ -216,7 +203,7 @@ struct Matrix {
 	}
 
 	~Matrix() {
-		free(array);
+		delete[] array;
 	}
 };
 
@@ -225,47 +212,29 @@ void print(Matrix mat);
 /*
 * Matrix
 */
-Matrix initMatrix(int row, int col) {
-	Matrix mat;
-	mat.row = row;
-	mat.column = col;
-	mat.array = (Vector *)malloc(sizeof(Vector) * mat.row);
-	for (int i = 0; i < mat.row; i++) {
-		mat[i] = Vector(mat.column);
-	}
-	return mat;
-}
-
-void freeMatrix(Matrix *mat) {
-	for(int i = 0; i < mat->row; i++) {
-		free(mat->array[i].array);
-	}
-
-	free(mat->array);
-}
 
 /*
 * returns the element of matrirx for ith and jth element
 */
 inline float getMatrixElement(Matrix mat, unsigned int i, unsigned int j) {
 	Vector vec = mat.array[i];
-	return vec.array[j];
+	return vec.list[j];
 }
 
 /*
 * set the element of matrirx for ith and jth element
 */
 inline void setMatrixElement(Matrix* mat, int i, int j, float element) {
-	mat->array[i].array[j] = element;
+	mat->array[i].list[j] = element;
 }
 
 
 
 /*convets a vector to a matrix of size(n, 1)*/
 Matrix vectorToMatrix(Vector vec) {
-	Matrix result = initMatrix(vec.size, 1);
+	Matrix result(vec.size, 1);
 	for (int i = 0; i < vec.size; i++) {
-		setMatrixElement(&result, i, 0, vec.array[i]);
+		setMatrixElement(&result, i, 0, vec.list[i]);
 	}
 	return result;
 }
@@ -274,7 +243,7 @@ Matrix vectorToMatrix(Vector vec) {
 Vector matrixToVector(Matrix mat) {
 	Vector result = Vector(mat.row);
 	for (int i = 0; i < mat.row; i++) {
-		result.array[i] = getMatrixElement(mat, i, 0);
+		result.list[i] = getMatrixElement(mat, i, 0);
 	}
 	return result;
 }
@@ -293,7 +262,7 @@ void setMatrixArray(Matrix* mat, float* array) {
 * returns the transpose of the matrix
 */
 Matrix transpose(Matrix mat) {
-	Matrix result = initMatrix(mat.column, mat.row);
+	Matrix result(mat.column, mat.row);
 	for (int i = 0; i < result.row; i++) {
 		Vector* vec = mat.array + i;
 		for (int j = 0; j < result.column; j++) {
@@ -307,7 +276,7 @@ Matrix transpose(Matrix mat) {
 
 
 Matrix matrixSubtract(Matrix mat1, Matrix mat2) {
-	Matrix result = initMatrix(mat1.row, mat1.column);
+	Matrix result(mat1.row, mat1.column);
 	if (mat1.row != mat2.row && mat1.column != mat2.column) {
 		printf("Dimension error\n");
 		exit(-1);
@@ -340,7 +309,7 @@ Matrix operator *(Matrix mat1, Matrix mat2) {
 }
 
 Matrix matrixMultiply(Matrix mat1, Matrix mat2) {
-	Matrix result = initMatrix(mat1.row, mat2.column);
+	Matrix result(mat1.row, mat2.column);
 	if (mat1.column != mat2.row) {
 		printf("Dimension error\n");
 		exit(-1);
@@ -367,7 +336,7 @@ Vector multiplyMatrixVector(Matrix mat, Vector vec) {
 	}
 	for (int i = 0; i < mat.row; i++) {
 		for (int j = 0; j < mat.column; j++) {
-			result.array[i] += getMatrixElement(mat, i, j) * vec.array[j];
+			result.list[i] += getMatrixElement(mat, i, j) * vec.list[j];
 		}
 	}
 	return result;
@@ -384,7 +353,7 @@ Matrix addMatrixVector(Matrix mat, Vector vec){
 	}
 	for (int i = 0; i < mat.row; i++) {
 		for (int j = 0; j < mat.column; j++) {
-			float sum = getMatrixElement(mat, i, j) + vec.array[i];
+			float sum = getMatrixElement(mat, i, j) + vec.list[i];
 			setMatrixElement(&result, i, j, sum);
 		}
 	}
@@ -392,7 +361,7 @@ Matrix addMatrixVector(Matrix mat, Vector vec){
 }
 
 Matrix elementWiseProduct(Matrix mat1, Matrix mat2) {
-	Matrix result = initMatrix(mat1.row, mat1.column);
+	Matrix result(mat1.row, mat1.column);
 	if (mat1.row != mat2.row || mat1.column != mat2.column) {
 		printf("Dimension error\n");
 		exit(-1);
@@ -406,7 +375,7 @@ Matrix elementWiseProduct(Matrix mat1, Matrix mat2) {
 }
 
 Matrix scalematrix(Matrix mat1, float scale) {
-	Matrix result = initMatrix(mat1.row, mat1.column);
+	Matrix result(mat1.row, mat1.column);
 	for (int i = 0; i < mat1.row; i++) {
 		for (int j = 0; j < mat1.column; j++) {
 			setMatrixElement(&result, i, j, getMatrixElement(mat1, i, j) * scale);
@@ -429,7 +398,7 @@ float sigmoid(float x){
 Vector sigmoidVector(Vector vec) {
 	Vector result = Vector(vec.size);
 	for(int i = 0; i < vec.size; i++){
-		result.array[i] = sigmoid(vec.array[i]);
+		result.list[i] = sigmoid(vec.list[i]);
 	}
 	return result;
 }
@@ -437,10 +406,10 @@ Vector sigmoidVector(Vector vec) {
 
 
 Matrix sigmoidMatrix(Matrix mat) {
-	Matrix result = initMatrix(mat.row, mat.column);
+	Matrix result(mat.row, mat.column);
 	for(int i = 0; i < mat.row; i++){
 		for(int j = 0; j < mat.column; j++){
-			result.array[i].array[j] = sigmoid(mat.array[i].array[j]);
+			result.array[i].list[j] = sigmoid(mat.array[i].list[j]);
 		}
 	}
 	return result;
@@ -456,14 +425,14 @@ float derivativeSigmoid(float x) {
 Vector derivativeSigmoidVector(Vector vec) {
 	Vector result = Vector(vec.size);
 	for (int i = 0; i < vec.size; i++) {
-		result.array[i] = derivativeSigmoid(vec.array[i]);
+		result.list[i] = derivativeSigmoid(vec.list[i]);
 	}
 	return result;
 }
 
 
 Matrix derivativeSigmoidMatrix(Matrix mat) {
-	Matrix result = initMatrix(mat.row, mat.column);
+	Matrix result(mat.row, mat.column);
 	for (int i = 0; i < mat.row; i++) {
 		for (int j = 0; j < mat.column; j++) {
 			setMatrixElement(&result, i, j, derivativeSigmoid(getMatrixElement(mat, i, j)));

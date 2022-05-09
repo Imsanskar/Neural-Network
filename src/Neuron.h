@@ -11,9 +11,9 @@ typedef struct Neuron {
 
 
 static float compute(Vector weight, Vector x) {
-	float result = weight.array[0];
+	float result = weight.list[0];
 	for (int i = 1; i < weight.size; i++) {
-		result += weight.array[i] * x.array[i - 1];
+		result += weight.list[i] * x.list[i - 1];
 	}
 	return result;
 }
@@ -56,9 +56,9 @@ void train(Neuron* neuron, Matrix x, Vector y) {
 		for (int j = 0; j < weights.size; j++) {
 			//for all the data set
 			for (int k = 0; k < y.size; k++) {
-				correction += 0.01f * (y.array[k] - activationSigmoid(weights, x.array[k])) * getMatrixElement(xTrain, k, j);
+				correction += 0.01f * (y.list[k] - activationSigmoid(weights, x.array[k])) * getMatrixElement(xTrain, k, j);
 			}
-			weights.array[j] += correction;
+			weights.list[j] += correction;
 		}
 	}
 	neuron->weights = weights;
@@ -74,6 +74,15 @@ inline float predict(Neuron neuron, Vector x) {
 typedef struct Layer {
 	Neuron* neurons;
 	int size;
+
+	Layer() {
+
+	}
+
+	Layer(const int _size) {
+		size = size;
+		neurons = (Neuron *)malloc(sizeof(Neuron) * size);
+	}
 }Layer;
 
 /*
@@ -109,14 +118,45 @@ typedef struct Network {
 	Vector* bias;
 	Matrix *z;
 	Matrix *a;
+
+
+	Network(const int _size, int architecture[], Matrix x, Vector y) {
+		size = _size;
+		layers = (Layer*)malloc(sizeof(Layer) * size);
+
+		for (int i = 0; i < size; i++) {
+			layers[i] = initLayer(architecture[i]);
+		}
+		parameters = (Matrix*)malloc(sizeof(Matrix) * size);
+		bias = (Vector *)malloc(sizeof(Vector) * size);
+		z = (Matrix *)malloc(sizeof(Matrix) * size);
+		a = (Matrix *)malloc(sizeof(Matrix) * (size));
+
+		parameters[0] = std::move(Matrix(layers[0].size, x.column));
+		bias[0] = std::move(Vector(layers[0].size));
+
+		for (int i = 0; i < size; i++) {
+			if(i != 0)
+				parameters[i] = Matrix(layers[i].size, layers[i - 1].size);
+			for (int j = 0; j < parameters[i].row; j++) {
+				for (int k = 0; k < parameters[i].column; k++) {
+					setMatrixElement(&parameters[i], j, k, 0.5f);
+				}
+			}
+			bias[i] = Vector(layers[i].size);
+			for (int j = 0; j < bias[i].size; j++) {
+				bias[i].list[j] = (float)rand() / RAND_MAX;
+			}
+		}
+	}
 }Network;
 
-Network initNetwork(const unsigned int size) {
-	Network net;
-	net.size = size;
-	net.layers = (Layer*)malloc(sizeof(Layer) * size);
-	return net;
-}
+// Network initNetwork(const unsigned int size) {
+// 	Network net;
+// 	net.size = size;
+// 	net.layers = (Layer*)malloc(sizeof(Layer) * size);
+// 	return net;
+// }
 
 
 /*
@@ -135,7 +175,7 @@ static void initializeParameters(Network* network) {
 		}
 		network->bias[i] = Vector(network->layers[i].size);
 		for (int j = 0; j < network->bias[i].size; j++) {
-			network->bias[i].array[j] = (float)rand() / RAND_MAX;
+			network->bias[i].list[j] = (float)rand() / RAND_MAX;
 		}
 	}
 }
@@ -217,7 +257,7 @@ void trainNetwork(Network* network, Matrix x, Vector y, int iterations, float al
 
 
 			//deviation from the true value
-			float error = finalResult - y.array[j];
+			float error = finalResult - y.list[j];
 			
 			for (int k = network->size - 1; k >= 0; k--) {
 				if(k == network->size - 1){
@@ -306,7 +346,7 @@ void trainStep(Network* network, Matrix x, Vector y, float alpha) {
 		//back propagate through the network to update the parameters
 
 		//deviation from the true value
-		float error = finalResult - y.array[j];
+		float error = finalResult - y.list[j];
 		
 		for (int k = network->size - 1; k >= 0; k--) {
 			if(k == network->size - 1){
@@ -330,9 +370,6 @@ void trainStep(Network* network, Matrix x, Vector y, float alpha) {
 			}
 		}
 	}
-
-	free(delta);
-	free(xTrain);
 }
 
 

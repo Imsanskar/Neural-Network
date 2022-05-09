@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 
 
-set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_CXX_FLAGS_DEBUG_INIT "-Wall -fsanitize=address -fsanitize=leak")
 
 project(NeuralNetwork VERSION 1.1 LANGUAGES C CXX)
 
@@ -26,9 +24,8 @@ include_directories(
 )
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin/)
-
-add_compile_options(-fsanitize=address)
-add_link_options(-fsanitize=address)
+add_compile_options(-fsanitize=address -fsanitize=leak -Wall -g)
+add_link_options(-fsanitize=address -fsanitize=leak)
 
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")

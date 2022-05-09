@@ -20,10 +20,10 @@ void render_plot(Network *network, int width, int height) {
 	Matrix mat = vectorToMatrix(inp);
 	for(int i = 0; i < width; i++) {
 		double x1 = (double) i / (double) width;
-		inp.array[0] = x1;
+		inp.list[0] = x1;
 		for(int j  = 0; j < height; j++){
 			double x2 = (double) j / (double) height;
-			inp.array[1] = x2;
+			inp.list[1] = x2;
 			double pred;
 			pred = predictNetwork(network, &mat);
 			
@@ -78,23 +78,20 @@ int main() {
 	// yVec.array = y;
 
 	// // neural network code
-	Network network = initNetwork(2);
 	int arch[] = { 2, 1 };
-	setLayerSize(&network, arch);
+	Network network(2, arch, xMat, yVec);
 
-	init_network(&network, xMat, yVec);
+	// trainNetwork(&network, xMat, yVec, 100000, 0.01);
 
-	trainNetwork(&network, xMat, yVec, 100000, 0.01);
+	// while(!glfwWindowShouldClose(window)) {
+	// 	glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
+	// 	glClear(GL_COLOR_BUFFER_BIT);
 
-	while(!glfwWindowShouldClose(window)) {
-		glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		render_plot(&network, width, height);
-		trainStep(&network, xMat, yVec, 0.0001);
+	// 	render_plot(&network, width, height);
+	// 	trainStep(&network, xMat, yVec, 0.0001);
 		
-		glfwSwapBuffers(window);
-		glfwPollEvents();
-	}
+	// 	glfwSwapBuffers(window);
+	// 	glfwPollEvents();
+	// }
 
 }
